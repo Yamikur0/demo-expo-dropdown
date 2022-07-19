@@ -1,138 +1,89 @@
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import DropDownPicker, { ItemType, ValueType } from 'react-native-dropdown-picker';
 
-type ProvinceData = ValueType & {
+type APIData = {
   code: string;
   name: string;
-
 }
 
-type DistrictData = ValueType & {
-  code: string;
-  name: string;
-  province: string;
-}
-
-type CommuneData = ValueType & {
-  code: string;
-  name: string;
-  district: string;
-  province: string;
+type APIResponseData = {
+  results: APIData[]
 }
 
 DropDownPicker.setListMode("SCROLLVIEW");
 
 export default function App() {
 
-  const [province, setProvince] = useState<ItemType<ProvinceData>[]>([]);
-  const [district, setDistrict] = useState<ItemType<DistrictData>[]>([]);
-  const [commune, setCommune] = useState<ItemType<CommuneData>[]>([]);
+  const [province, setProvince] = useState<ItemType<string>[]>([]);
+  const [provinceValue, setProvinceValue] = useState<string>("")
+  const [openProvince, setProvinceOpen] = useState(false);
 
-  //Custom Dropdown Picker for province
-  const [provinceValue, setProvinceValue] = useState<ProvinceData>({} as ProvinceData);
-  const [provinceOpen, setProvinceOpen] = useState(false);
-  const onCountryOpen = useCallback(() => {
-    setDistrictOpen(false);
-    setCommuneOpen(false);
-  }, []);
+  const [district, setDistrict] = useState<ItemType<string>[]>([]);
+  const [districtValue, setDistrictValue] = useState<string>("")
+  const [openDistrict, setDistrictOpen] = useState(false);
 
-  //Custom Dropdown Picker for district
-  const [districtValue, setDistrictValue] = useState<DistrictData>({} as DistrictData);
-  const [districtOpen, setDistrictOpen] = useState(false);
-  const onDistrictOpen = useCallback(() => {
-    setProvinceOpen(false);
-    setCommuneOpen(false);
-  }, []);
-
-  //Custom Dropdown Picker for commune
-  const [communeValue, setCommuneValue] = useState<CommuneData>({} as CommuneData);
-  const [communeOpen, setCommuneOpen] = useState(false);
-  const onCommuneOpen = useCallback(() => {
-    setProvinceOpen(false);
-    setDistrictOpen(false);
-  }, []);
+  const [commune, setCommune] = useState<ItemType<string>[]>([]);
+  const [communeValue, setCommuneValue] = useState<string>("")
+  const [openCommune, setCommuneOpen] = useState(false);
 
   useEffect(() => {
-    axios.get('https://api.mysupership.vn/v1/partner/areas/province').then((response) => {
-      setProvince(response.data.results);
+    axios.get<APIResponseData>('https://api.mysupership.vn/v1/partner/areas/province').then((response: AxiosResponse<APIResponseData>) => {
+      const tempResult: ItemType<string>[] = response.data.results.map((result: APIData) => {
+        return { label: result.name, value: result.code }
+      })
+      setProvince(tempResult);
     });
   }, []);
 
   useEffect(() => {
-    if (provinceValue.code) {
-      axios.get('https://api.mysupership.vn/v1/partner/areas/district?', {
-        params: {
-          province: province.find((item) => item.value?.code)
-        }
-      }).then((response) => {
-        setDistrict(response.data.results);
-      });
-      console.log(province.find((item) => item.value?.code));
-      
-    }
-    console.log(provinceValue.toString());
-    
+    provinceValue && axios.get<APIResponseData>('https://api.mysupership.vn/v1/partner/areas/district', { params: { province: provinceValue } }).then((response: AxiosResponse<APIResponseData>) => {
+      const tempResult: ItemType<string>[] = response.data.results.map((result: APIData) => {
+        return { label: result.name, value: result.code }
+      })
+      setDistrict(tempResult);
+    });
   }, [provinceValue]);
 
   useEffect(() => {
-    if (districtValue.code) {
-      axios.get('https://api.mysupership.vn/v1/partner/areas/commune?', {
-        params: {
-          district: districtValue.code 
-        }
-      }).then((response) => {
-        setCommune(response.data.results);
-      });
-    }
+    districtValue && axios.get<APIResponseData>('https://api.mysupership.vn/v1/partner/areas/commune', { params: { district: districtValue } }).then((response: AxiosResponse<APIResponseData>) => {
+      const tempResult: ItemType<string>[] = response.data.results.map((result: APIData) => {
+        return { label: result.name, value: result.code }
+      })
+      setCommune(tempResult);
+    });
   }, [districtValue]);
 
   return (
     <View style={styles.container}>
       <DropDownPicker
         placeholder="Select province"
-        schema={{
-          label: 'name',
-          value: 'name'
-        }}
-        open={provinceOpen}
-        onOpen={onCountryOpen}
+        open={openProvince}
         value={provinceValue}
         items={province}
         setOpen={setProvinceOpen}
         setValue={setProvinceValue}
-        onChangeValue={(item) => {
-          console.log(item);
-          
-        }}
+        setItems={setProvince}
       />
       <DropDownPicker
         placeholder="Select district"
-        schema={{
-          label: 'name',
-          value: 'name'
-        }}
-        open={districtOpen}
-        onOpen={onDistrictOpen}
+        open={openDistrict}
         value={districtValue}
         items={district}
         setOpen={setDistrictOpen}
         setValue={setDistrictValue}
+        setItems={setDistrict}
       />
       <DropDownPicker
         placeholder="Select commune"
-        schema={{
-          label: 'name',
-          value: 'name'
-        }}
-        open={communeOpen}
-        onOpen={onCommuneOpen}
+        open={openCommune}
         value={communeValue}
         items={commune}
         setOpen={setCommuneOpen}
         setValue={setCommuneValue}
+        setItems={setCommune}
       />
       <StatusBar style="auto" />
     </View>
